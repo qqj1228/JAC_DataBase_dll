@@ -10,24 +10,42 @@ namespace testDll {
         static void Main(string[] args) {
             LoggerClass log = new LoggerClass("./log", EnumLogLevel.LogLevelAll, true);
             DB_Class db = new DB_Class("./DB_Config.xml");
-            db.GetTableName();
-            Console.WriteLine();
             log.TraceInfo("GetTableName()");
-            db.GetTableColumns("BrakeResult");
+            db.GetTableName();
+
             Console.WriteLine();
             log.TraceWarning("GetTableColumns(\"BrakeResult\")");
-            db.GetRecords("VehicleInfo", 1, 4);
+            db.GetTableColumns("BrakeResult");
+
             Console.WriteLine();
             log.TraceError("GetRecords(\"VehicleInfo\", 1, 4)");
+            db.GetRecords("VehicleInfo", 1, 4);
+
+            Console.WriteLine();
+            log.TraceInfo("GetRecordsCount(\"VehicleInfo\")");
+            int count = db.GetRecordsCount("VehicleInfo");
+            Console.WriteLine("There is {0} record(s)", count);
+
+            // UpdateDB
+            Console.WriteLine();
+            log.TraceFatal("ModifyDB(\"VehicleInfo\", new string[] { \"3\", \"4\" }, strArr)");
             string[,] strArr = new string[,] { { "testvincode332345", "IEV33" }, { "testvincode442345", "IEV44" } };
             int iRet = db.ModifyDB("VehicleInfo", new string[] { "3", "4" }, strArr);
-            Console.WriteLine();
             Console.WriteLine("{0} Row(s) affected", iRet);
-            log.TraceFatal("ModifyDB(\"VehicleInfo\", new string[] { \"3\", \"4\" }, strArr)");
-            int count = db.GetRecordsCount("VehicleInfo");
+
+            // UpdateDB and InsertDB
             Console.WriteLine();
-            Console.WriteLine("There is {0} record(s)", count);
-            log.TraceInfo("GetRecordsCount(\"VehicleInfo\")");
+            log.TraceFatal("ModifyDB(\"VehicleInfo\", new string[] { \"3\" }, strArr)");
+            strArr = new string[,] { { "testvincode332345", "IEV33" }, { "testvincode992299", "IEV992299" } };
+            iRet = db.ModifyDB("VehicleInfo", new string[] { "3" }, strArr);
+            Console.WriteLine("{0} Row(s) affected", iRet);
+
+            // DeleteDB
+            Console.WriteLine();
+            log.TraceFatal("ModifyDB(\"VehicleInfo\", new string[] { \"22\", \"23\" }, strArr)");
+            iRet = db.DeleteDB("VehicleInfo", new string[] { "22", "23" });
+            Console.WriteLine("{0} Row(s) affected", iRet);
+
         }
     }
 }

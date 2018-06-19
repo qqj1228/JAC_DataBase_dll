@@ -213,13 +213,13 @@ namespace JAC_DataBase {
 
         public string[,] GetRecords(string strTableName, int page, int perPage = 100) {
             int offset = page * perPage;
-            string StrSQL = string.Format("select top {2} * from {0} where id not in (select top {1} ID from {0} order by ID asc)", strTableName, offset, perPage);
-            Log.TraceInfo("SQL: " + StrSQL);
+            string strSQL = string.Format("select top {2} * from {0} where id not in (select top {1} ID from {0} order by ID asc)", strTableName, offset, perPage);
+            Log.TraceInfo("SQL: " + strSQL);
             try {
                 int count = 0;
                 List<string[]> rowList;
                 using (SqlConnection sqlConn = new SqlConnection(StrConn)) {
-                    SqlCommand sqlCmd = new SqlCommand(StrSQL, sqlConn);
+                    SqlCommand sqlCmd = new SqlCommand(strSQL, sqlConn);
                     sqlConn.Open();
                     SqlDataReader sqlData = sqlCmd.ExecuteReader();
                     count = sqlData.FieldCount;
@@ -256,23 +256,45 @@ namespace JAC_DataBase {
             int iRet = 0;
             int iRowNum = strValue.GetLength(0);
             int iColNum = strValue.GetLength(1);
-            if (iRowNum != strID.Length) {
+            int iIDNum = strID.Length;
+            Log.TraceInfo(string.Format("iRowNum:{0}, iIDNum:{1}", iRowNum, iIDNum));
+            if (iRowNum == iIDNum) {
+                iRet += UpdateDB(strTableName, strID, strValue);
+            } else if (iRowNum > iIDNum) {
+                string[,] strUpdate = new string[iIDNum, iColNum];
+                Array.Copy(strValue, 0, strUpdate, 0, iIDNum * iColNum);
+                iRet += UpdateDB(strTableName, strID, strUpdate);
+
+                string[,] strInsert = new string[iRowNum - iIDNum, iColNum];
+                Array.Copy(strValue, iIDNum * iColNum, strInsert, 0, (iRowNum - iIDNum) * iColNum);
+                iRet += InsertDB(strTableName, strInsert);
+            } else {
+                iRet = -1;
+            }
+            return iRet;
+        }
+
+        int UpdateDB(string strTableName, string[] strID, string[,] strValue) {
+            int iRet = 0;
+            int iRowNum = strValue.GetLength(0);
+            int iColNum = strValue.GetLength(1);
+            if (iRowNum * strID.Length == 0) {
                 return -1;
             }
             string[] strColumns = GetTableColumns(strTableName);
             try {
                 using (SqlConnection sqlConn = new SqlConnection(StrConn)) {
                     sqlConn.Open();
-                    for (int m = 0; m < iRowNum; m++) {
-                        string StrSQL = "update ";
+                    for (int i = 0; i < iRowNum; i++) {
+                        string strSQL = "update ";
                         string strSet = "set ";
-                        for (int i = 1; i < strColumns.Length; i++) {
-                            strSet += strColumns[i] + " = '" + strValue[m, i - 1] + "', ";
+                        for (int j = 1; j < strColumns.Length; j++) {
+                            strSet += strColumns[j] + " = '" + strValue[i, j - 1] + "', ";
                         }
                         strSet = strSet.Remove(strSet.Length - 2);
-                        StrSQL += string.Format("{0} {1} where ID = '{2}'", strTableName, strSet, strID[m]);
-                        Log.TraceInfo("SQL: " + StrSQL);
-                        SqlCommand sqlCmd = new SqlCommand(StrSQL, sqlConn);
+                        strSQL += string.Format("{0} {1} where ID = '{2}'", strTableName, strSet, strID[i]);
+                        Log.TraceInfo("SQL: " + strSQL);
+                        SqlCommand sqlCmd = new SqlCommand(strSQL, sqlConn);
                         iRet += sqlCmd.ExecuteNonQuery();
                     }
                     //sqlConn.Close();
@@ -282,7 +304,56 @@ namespace JAC_DataBase {
                 Log.TraceError(e.Message);
             }
             return iRet;
-        } 
+        }
+
+        int InsertDB(string strTableName, string[,] strValue) {
+            int iRet = 0;
+            int iRowNum = strValue.GetLength(0);
+            int iColNum = strValue.GetLength(1);
+            if (iRowNum * iColNum == 0) {
+                return -1;
+            }
+            try {
+                using (SqlConnection sqlConn = new SqlConnection(StrConn)) {
+                    sqlConn.Open();
+                    for (int i = 0; i < iRowNum; i++) {
+                        string strSQL = "insert " + strTableName + " values (";
+                        for (int j = 0; j < iColNum; j++) {
+                            strSQL += "'" + strValue[i, j] + "', ";
+                        }
+                        strSQL = strSQL.Remove(strSQL.Length - 2);
+                        strSQL += ")";
+                        Log.TraceInfo("SQL: " + strSQL);
+                        SqlCommand sqlCmd = new SqlCommand(strSQL, sqlConn);
+                        iRet += sqlCmd.ExecuteNonQuery();
+                    }
+                }
+            } catch (Exception e) {
+                Console.Error.WriteLine(e.Message);
+                Log.TraceError(e.Message);
+            }
+            return iRet;
+        }
+
+        public int DeleteDB(string strTableName, string[] strID) {
+            int iRet = 0;
+            int length = strID.Length;
+            try {
+                using (SqlConnection sqlConn = new SqlConnection(StrConn)) {
+                    sqlConn.Open();
+                    for (int i = 0; i < length; i++) {
+                        string strSQL = "delete from " + strTableName + " where ID = '" + strID[i] + "'";
+                        Log.TraceInfo("SQL: " + strSQL);
+                        SqlCommand sqlCmd = new SqlCommand(strSQL, sqlConn);
+                        iRet += sqlCmd.ExecuteNonQuery();
+                    }
+                }
+            } catch (Exception e) {
+                Console.Error.WriteLine(e.Message);
+                Log.TraceError(e.Message);
+            }
+            return iRet;
+        }
     }
 
 }
