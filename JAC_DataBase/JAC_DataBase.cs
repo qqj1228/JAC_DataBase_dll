@@ -215,41 +215,7 @@ namespace JAC_DataBase {
             int offset = page * perPage;
             string strSQL = string.Format("select top {2} * from {0} where id not in (select top {1} ID from {0} order by ID asc)", strTableName, offset, perPage);
             Log.TraceInfo("SQL: " + strSQL);
-            try {
-                int count = 0;
-                List<string[]> rowList;
-                using (SqlConnection sqlConn = new SqlConnection(StrConn)) {
-                    SqlCommand sqlCmd = new SqlCommand(strSQL, sqlConn);
-                    sqlConn.Open();
-                    SqlDataReader sqlData = sqlCmd.ExecuteReader();
-                    count = sqlData.FieldCount;
-                    rowList = new List<string[]>();
-                    while (sqlData.Read()) {
-                        string[] items = new string[count];
-                        for (int i = 0; i < count; i++) {
-                            object obj = sqlData.GetValue(i);
-                            if (obj.GetType() == typeof(DateTime)) {
-                                items[i] = ((DateTime)obj).ToString("yyyy-MM-dd");
-                            } else {
-                                items[i] = obj.ToString();
-                            }
-                        }
-                        rowList.Add(items);
-                    }
-                    //sqlConn.Close();
-                }
-                string[,] records = new string[rowList.Count, count];
-                for (int i = 0; i < rowList.Count; i++) {
-                    for (int j = 0; j < count; j++) {
-                        records[i, j] = rowList[i][j];
-                    }
-                }
-                return records;
-            } catch (Exception e) {
-                Console.Error.WriteLine(e.Message);
-                Log.TraceError(e.Message);
-            }
-            return new string[,] { { "" }, { "" } };
+            return SelectDB(strSQL);
         }
 
         public int ModifyDB(string strTableName, string[] strID, string[,] strValue) {
@@ -354,6 +320,51 @@ namespace JAC_DataBase {
             }
             return iRet;
         }
-    }
 
+        string[,] SelectDB(string strSQL) {
+            try {
+                int count = 0;
+                List<string[]> rowList;
+                using (SqlConnection sqlConn = new SqlConnection(StrConn)) {
+                    SqlCommand sqlCmd = new SqlCommand(strSQL, sqlConn);
+                    sqlConn.Open();
+                    SqlDataReader sqlData = sqlCmd.ExecuteReader();
+                    count = sqlData.FieldCount;
+                    rowList = new List<string[]>();
+                    while (sqlData.Read()) {
+                        string[] items = new string[count];
+                        for (int i = 0; i < count; i++) {
+                            object obj = sqlData.GetValue(i);
+                            if (obj.GetType() == typeof(DateTime)) {
+                                items[i] = ((DateTime)obj).ToString("yyyy-MM-dd");
+                            } else {
+                                items[i] = obj.ToString();
+                            }
+                        }
+                        rowList.Add(items);
+                    }
+                    //sqlConn.Close();
+                }
+                string[,] records = new string[rowList.Count, count];
+                for (int i = 0; i < rowList.Count; i++) {
+                    for (int j = 0; j < count; j++) {
+                        records[i, j] = rowList[i][j];
+                    }
+                }
+                return records;
+            } catch (Exception e) {
+                Console.Error.WriteLine(e.Message);
+                Log.TraceError(e.Message);
+            }
+            return new string[,] { { "" }, { "" } };
+        }
+
+        public string[,] SelectRecord(string strTableName, string strColumn, string strValue, out int iCount) {
+            string strSQL = "select * from " + strTableName + " where " + strColumn + " = '" + strValue + "'";
+            Log.TraceInfo("SQL: " + strSQL);
+            string[,] strArr = SelectDB(strSQL);
+            iCount = strArr.GetLength(0);
+            return strArr;
+        }
+    }
 }

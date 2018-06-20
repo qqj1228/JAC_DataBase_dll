@@ -46,6 +46,11 @@ namespace testDll {
             iRet = db.DeleteDB("VehicleInfo", new string[] { "22", "23" });
             Console.WriteLine("{0} Row(s) affected", iRet);
 
+            // Select
+            Console.WriteLine();
+            log.TraceError("SelectRecord(\"EPSCaliProc\", \"Result\", \"X\", out count)");
+            db.SelectRecord("EPSCaliProc", "Result", "X", out count);
+            Console.WriteLine("There is {0} record(s)", count);
         }
     }
 }
