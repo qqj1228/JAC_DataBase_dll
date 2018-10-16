@@ -1,0 +1,7 @@
+<DB_Config>
+    <DB_IP>127.0.0.1</DB_IP>
+    <DB_Port>1433</DB_Port>
+    <DB_Name>JAC</DB_Name>
+    <DB_UserID>sa</DB_UserID>
+    <DB_Pwd>sh49</DB_Pwd>
+</DB_Config>
