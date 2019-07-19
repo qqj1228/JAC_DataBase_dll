@@ -86,7 +86,7 @@ namespace JAC_DataBase {
                             }
                         }
                     }
-                    //sqlConn.Close();
+                    sqlConn.Close();
                     foreach (var item in tableName) {
                         Console.WriteLine(item);
                     }
@@ -122,7 +122,7 @@ namespace JAC_DataBase {
                             }
                         }
                     }
-                    //sqlConn.Close();
+                    sqlConn.Close();
                     foreach (var item in tableName) {
                         Console.WriteLine(item);
                     }
@@ -203,6 +203,7 @@ namespace JAC_DataBase {
                     SqlCommand sqlCmd = new SqlCommand(strSQL, sqlConn);
                     sqlConn.Open();
                     count = (int)sqlCmd.ExecuteScalar();
+                    sqlConn.Close();
                 }
             } catch (Exception e) {
                 Console.Error.WriteLine(e.Message);
@@ -245,7 +246,7 @@ namespace JAC_DataBase {
             int iRowNum = strValue.GetLength(0);
             int iColNum = strValue.GetLength(1);
             if (iRowNum * strID.Length == 0) {
-                return -1;
+                return 0;
             }
             string[] strColumns = GetTableColumns(strTableName);
             try {
@@ -263,7 +264,7 @@ namespace JAC_DataBase {
                         SqlCommand sqlCmd = new SqlCommand(strSQL, sqlConn);
                         iRet += sqlCmd.ExecuteNonQuery();
                     }
-                    //sqlConn.Close();
+                    sqlConn.Close();
                 }
             } catch (Exception e) {
                 Console.Error.WriteLine(e.Message);
@@ -277,7 +278,7 @@ namespace JAC_DataBase {
             int iRowNum = strValue.GetLength(0);
             int iColNum = strValue.GetLength(1);
             if (iRowNum * iColNum == 0) {
-                return -1;
+                return 0;
             }
             try {
                 using (SqlConnection sqlConn = new SqlConnection(StrConn)) {
@@ -293,6 +294,7 @@ namespace JAC_DataBase {
                         SqlCommand sqlCmd = new SqlCommand(strSQL, sqlConn);
                         iRet += sqlCmd.ExecuteNonQuery();
                     }
+                    sqlConn.Close();
                 }
             } catch (Exception e) {
                 Console.Error.WriteLine(e.Message);
@@ -313,6 +315,7 @@ namespace JAC_DataBase {
                         SqlCommand sqlCmd = new SqlCommand(strSQL, sqlConn);
                         iRet += sqlCmd.ExecuteNonQuery();
                     }
+                    sqlConn.Close();
                 }
             } catch (Exception e) {
                 Console.Error.WriteLine(e.Message);
@@ -343,7 +346,7 @@ namespace JAC_DataBase {
                         }
                         rowList.Add(items);
                     }
-                    //sqlConn.Close();
+                    sqlConn.Close();
                 }
                 string[,] records = new string[rowList.Count, count];
                 for (int i = 0; i < rowList.Count; i++) {
