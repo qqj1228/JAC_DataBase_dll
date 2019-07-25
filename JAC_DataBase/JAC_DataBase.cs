@@ -17,6 +17,7 @@ namespace JAC_DataBase {
             public string DB_Name { get; set; }
             public string DB_UserID { get; set; }
             public string DB_Pwd { get; set; }
+            public List<string[]> TableList;
         }
 
         DBConfig DBCfg;
@@ -56,6 +57,13 @@ namespace JAC_DataBase {
                         DBCfg.DB_UserID = item.InnerText;
                     } else if (item.Name == "DB_Pwd") {
                         DBCfg.DB_Pwd = item.InnerText;
+                    } else if (item.Name == "TableList") {
+                        DBCfg.TableList = new List<string[]>();
+                        foreach (var node in item.ChildNodes) {
+                            string key = ((XmlElement)node).GetAttribute("Name");
+                            string value = ((XmlElement)node).GetAttribute("Description");
+                            DBCfg.TableList.Add(new string[] { key, value });
+                        }
                     }
                 }
             } catch (Exception e) {
@@ -65,43 +73,43 @@ namespace JAC_DataBase {
         }
 
         public string[] GetTableName() {
-            try {
-                using (SqlConnection sqlConn = new SqlConnection(StrConn)) {
+            using (SqlConnection sqlConn = new SqlConnection(StrConn)) {
+                try {
                     sqlConn.Open();
                     DataTable schema = sqlConn.GetSchema("Tables");
-                    int count = schema.Rows.Count;
+                    int count = DBCfg.TableList.Count;
                     string[] tableName = new string[count + 1];
                     tableName[0] = "请选择...";
-                    for (int i = 0; i < count; i++) {
-                        DataRow row = schema.Rows[i];
-                        foreach (DataColumn col in schema.Columns) {
-                            if (col.Caption == "TABLE_NAME") {
-                                if (col.DataType.Equals(typeof(DateTime))) {
-                                    tableName[i + 1] = string.Format("{0:d}", row[col]);
-                                } else if (col.DataType.Equals(typeof(Decimal))) {
-                                    tableName[i + 1] = string.Format("{0:C}", row[col]);
-                                } else {
-                                    tableName[i + 1] = string.Format("{0}", row[col]);
+                    foreach (DataColumn col in schema.Columns) {
+                        if (col.Caption == "TABLE_NAME") {
+                            for (int i = 0; i < schema.Rows.Count; i++) {
+                                DataRow row = schema.Rows[i];
+                                for (int j = 0; j < count; j++) {
+                                    if (string.Format("{0}", row[col]) == DBCfg.TableList[j][0]) {
+                                        tableName[j + 1] = DBCfg.TableList[j][1];
+                                    }
                                 }
                             }
                         }
                     }
-                    sqlConn.Close();
-                    foreach (var item in tableName) {
-                        Console.WriteLine(item);
-                    }
                     return tableName;
+                } catch (Exception e) {
+                    Console.Error.WriteLine(e.Message);
+                    Log.TraceError(e.Message);
+                } finally {
+                    sqlConn.Close();
                 }
-            } catch (Exception e) {
-                Console.Error.WriteLine(e.Message);
-                Log.TraceError(e.Message);
+                return new string[] { };
             }
-            return new string[] { "" };
         }
 
-        public string[] GetTableColumns(string strTableName) {
-            try {
-                using (SqlConnection sqlConn = new SqlConnection(StrConn)) {
+        public string[] GetTableColumns(int index) {
+            if (index < 1) {
+                return new string[] { };
+            }
+            string strTableName = DBCfg.TableList[index - 1][0];
+            using (SqlConnection sqlConn = new SqlConnection(StrConn)) {
+                try {
                     sqlConn.Open();
                     DataTable schema = sqlConn.GetSchema("Columns", new string[] { null, null, strTableName });
                     schema.DefaultView.Sort = "ORDINAL_POSITION";
@@ -114,7 +122,7 @@ namespace JAC_DataBase {
                             if (col.Caption == "COLUMN_NAME") {
                                 if (col.DataType.Equals(typeof(DateTime))) {
                                     tableName[i] = string.Format("{0:d}", row[col]);
-                                } else if (col.DataType.Equals(typeof(Decimal))) {
+                                } else if (col.DataType.Equals(typeof(decimal))) {
                                     tableName[i] = string.Format("{0:C}", row[col]);
                                 } else {
                                     tableName[i] = string.Format("{0}", row[col]);
@@ -122,135 +130,94 @@ namespace JAC_DataBase {
                             }
                         }
                     }
-                    sqlConn.Close();
-                    foreach (var item in tableName) {
-                        Console.WriteLine(item);
-                    }
                     return tableName;
+                } catch (Exception e) {
+                    Console.Error.WriteLine(e.Message);
+                    Log.TraceError(e.Message);
+                } finally {
+                    sqlConn.Close();
                 }
-            } catch (Exception e) {
-                Console.Error.WriteLine(e.Message);
-                Log.TraceError(e.Message);
             }
-            return new string[] { "" };
+            return new string[] { };
         }
 
-        void ShowDataTable(DataTable table, Int32 length) {
-            foreach (DataColumn col in table.Columns) {
-                Console.Write("{0,-" + length + "}", col.ColumnName);
+        public int GetRecordsCount(int index) {
+            if (index < 1) {
+                return -1;
             }
-            Console.WriteLine();
-
-            foreach (DataRow row in table.Rows) {
-                foreach (DataColumn col in table.Columns) {
-                    if (col.DataType.Equals(typeof(DateTime)))
-                        Console.Write("{0,-" + length + ":d}", row[col]);
-                    else if (col.DataType.Equals(typeof(Decimal)))
-                        Console.Write("{0,-" + length + ":C}", row[col]);
-                    else
-                        Console.Write("{0,-" + length + "}", row[col]);
-                }
-                Console.WriteLine();
-            }
-        }
-
-        void ShowDataTable(DataTable table) {
-            ShowDataTable(table, 14);
-        }
-
-        void ShowColumns(DataTable columnsTable) {
-            var selectedRows = from info in columnsTable.AsEnumerable()
-                               select new {
-                                   TableCatalog = info["TABLE_CATALOG"],
-                                   TableSchema = info["TABLE_SCHEMA"],
-                                   TableName = info["TABLE_NAME"],
-                                   ColumnName = info["COLUMN_NAME"],
-                                   DataType = info["DATA_TYPE"]
-                               };
-
-            Console.WriteLine("{0,-15}{1,-15}{2,-15}{3,-15}{4,-15}", "TableCatalog", "TABLE_SCHEMA",
-                "TABLE_NAME", "COLUMN_NAME", "DATA_TYPE");
-            foreach (var row in selectedRows) {
-                Console.WriteLine("{0,-15}{1,-15}{2,-15}{3,-15}{4,-15}", row.TableCatalog,
-                    row.TableSchema, row.TableName, row.ColumnName, row.DataType);
-            }
-        }
-
-        void ShowIndexColumns(DataTable indexColumnsTable) {
-            var selectedRows = from info in indexColumnsTable.AsEnumerable()
-                               select new {
-                                   TableSchema = info["table_schema"],
-                                   TableName = info["table_name"],
-                                   ColumnName = info["column_name"],
-                                   ConstraintSchema = info["constraint_schema"],
-                                   ConstraintName = info["constraint_name"],
-                                   KeyType = info["KeyType"]
-                               };
-
-            Console.WriteLine("{0,-14}{1,-11}{2,-14}{3,-18}{4,-16}{5,-8}", "table_schema", "table_name", "column_name", "constraint_schema", "constraint_name", "KeyType");
-            foreach (var row in selectedRows) {
-                Console.WriteLine("{0,-14}{1,-11}{2,-14}{3,-18}{4,-16}{5,-8}", row.TableSchema,
-                    row.TableName, row.ColumnName, row.ConstraintSchema, row.ConstraintName, row.KeyType);
-            }
-        }
-
-        public int GetRecordsCount(string strTableName) {
+            string strTableName = DBCfg.TableList[index - 1][0];
             string strSQL = "select count(*) from " + strTableName;
             Log.TraceInfo("SQL: " + strSQL);
             int count = 0;
-            try {
-                using (SqlConnection sqlConn = new SqlConnection(StrConn)) {
+            using (SqlConnection sqlConn = new SqlConnection(StrConn)) {
+                try {
                     SqlCommand sqlCmd = new SqlCommand(strSQL, sqlConn);
                     sqlConn.Open();
                     count = (int)sqlCmd.ExecuteScalar();
+                } catch (Exception e) {
+                    Console.Error.WriteLine(e.Message);
+                    Log.TraceError(e.Message);
+                } finally {
                     sqlConn.Close();
                 }
-            } catch (Exception e) {
-                Console.Error.WriteLine(e.Message);
-                Log.TraceError(e.Message);
             }
             return count;
         }
 
-        public string[,] GetRecords(string strTableName, int page, int perPage = 100) {
+        public string[,] GetRecords(int index, int page, int perPage = 100) {
+            if (index < 1) {
+                return new string[,] { };
+            }
+            string strTableName = DBCfg.TableList[index - 1][0];
+            if (page < 0) {
+                page = 0;
+            }
             int offset = page * perPage;
             string strSQL = string.Format("select top {2} * from {0} where id not in (select top {1} ID from {0} order by ID asc)", strTableName, offset, perPage);
             Log.TraceInfo("SQL: " + strSQL);
             return SelectDB(strSQL);
         }
 
-        public int ModifyDB(string strTableName, string[] strID, string[,] strValue) {
+        public int ModifyDB(int index, string[] strID, string[,] strValue) {
+            if (index < 1) {
+                return -1;
+            }
+            string strTableName = DBCfg.TableList[index - 1][0];
             int iRet = 0;
             int iRowNum = strValue.GetLength(0);
             int iColNum = strValue.GetLength(1);
             int iIDNum = strID.Length;
             Log.TraceInfo(string.Format("iRowNum:{0}, iIDNum:{1}", iRowNum, iIDNum));
             if (iRowNum == iIDNum) {
-                iRet += UpdateDB(strTableName, strID, strValue);
+                iRet += UpdateDB(index, strID, strValue);
             } else if (iRowNum > iIDNum) {
                 string[,] strUpdate = new string[iIDNum, iColNum];
                 Array.Copy(strValue, 0, strUpdate, 0, iIDNum * iColNum);
-                iRet += UpdateDB(strTableName, strID, strUpdate);
+                iRet += UpdateDB(index, strID, strUpdate);
 
                 string[,] strInsert = new string[iRowNum - iIDNum, iColNum];
                 Array.Copy(strValue, iIDNum * iColNum, strInsert, 0, (iRowNum - iIDNum) * iColNum);
-                iRet += InsertDB(strTableName, strInsert);
+                iRet += InsertDB(index, strInsert);
             } else {
                 iRet = -1;
             }
             return iRet;
         }
 
-        int UpdateDB(string strTableName, string[] strID, string[,] strValue) {
+        int UpdateDB(int index, string[] strID, string[,] strValue) {
+            if (index < 1) {
+                return -1;
+            }
+            string strTableName = DBCfg.TableList[index - 1][0];
             int iRet = 0;
             int iRowNum = strValue.GetLength(0);
             int iColNum = strValue.GetLength(1);
             if (iRowNum * strID.Length == 0) {
                 return 0;
             }
-            string[] strColumns = GetTableColumns(strTableName);
-            try {
-                using (SqlConnection sqlConn = new SqlConnection(StrConn)) {
+            string[] strColumns = GetTableColumns(index);
+            using (SqlConnection sqlConn = new SqlConnection(StrConn)) {
+                try {
                     sqlConn.Open();
                     for (int i = 0; i < iRowNum; i++) {
                         string strSQL = "update ";
@@ -264,24 +231,29 @@ namespace JAC_DataBase {
                         SqlCommand sqlCmd = new SqlCommand(strSQL, sqlConn);
                         iRet += sqlCmd.ExecuteNonQuery();
                     }
+                } catch (Exception e) {
+                    Console.Error.WriteLine(e.Message);
+                    Log.TraceError(e.Message);
+                } finally {
                     sqlConn.Close();
                 }
-            } catch (Exception e) {
-                Console.Error.WriteLine(e.Message);
-                Log.TraceError(e.Message);
             }
             return iRet;
         }
 
-        int InsertDB(string strTableName, string[,] strValue) {
+        int InsertDB(int index, string[,] strValue) {
+            if (index < 1) {
+                return -1;
+            }
+            string strTableName = DBCfg.TableList[index - 1][0];
             int iRet = 0;
             int iRowNum = strValue.GetLength(0);
             int iColNum = strValue.GetLength(1);
             if (iRowNum * iColNum == 0) {
                 return 0;
             }
-            try {
-                using (SqlConnection sqlConn = new SqlConnection(StrConn)) {
+            using (SqlConnection sqlConn = new SqlConnection(StrConn)) {
+                try {
                     sqlConn.Open();
                     for (int i = 0; i < iRowNum; i++) {
                         string strSQL = "insert " + strTableName + " values (";
@@ -294,20 +266,25 @@ namespace JAC_DataBase {
                         SqlCommand sqlCmd = new SqlCommand(strSQL, sqlConn);
                         iRet += sqlCmd.ExecuteNonQuery();
                     }
+                } catch (Exception e) {
+                    Console.Error.WriteLine(e.Message);
+                    Log.TraceError(e.Message);
+                } finally {
                     sqlConn.Close();
                 }
-            } catch (Exception e) {
-                Console.Error.WriteLine(e.Message);
-                Log.TraceError(e.Message);
             }
             return iRet;
         }
 
-        public int DeleteDB(string strTableName, string[] strID) {
+        public int DeleteDB(int index, string[] strID) {
+            if (index < 1) {
+                return -1;
+            }
+            string strTableName = DBCfg.TableList[index - 1][0];
             int iRet = 0;
             int length = strID.Length;
-            try {
-                using (SqlConnection sqlConn = new SqlConnection(StrConn)) {
+            using (SqlConnection sqlConn = new SqlConnection(StrConn)) {
+                try {
                     sqlConn.Open();
                     for (int i = 0; i < length; i++) {
                         string strSQL = "delete from " + strTableName + " where ID = '" + strID[i] + "'";
@@ -315,20 +292,21 @@ namespace JAC_DataBase {
                         SqlCommand sqlCmd = new SqlCommand(strSQL, sqlConn);
                         iRet += sqlCmd.ExecuteNonQuery();
                     }
+                } catch (Exception e) {
+                    Console.Error.WriteLine(e.Message);
+                    Log.TraceError(e.Message);
+                } finally {
                     sqlConn.Close();
                 }
-            } catch (Exception e) {
-                Console.Error.WriteLine(e.Message);
-                Log.TraceError(e.Message);
             }
             return iRet;
         }
 
         string[,] SelectDB(string strSQL) {
-            try {
-                int count = 0;
-                List<string[]> rowList;
-                using (SqlConnection sqlConn = new SqlConnection(StrConn)) {
+            int count = 0;
+            List<string[]> rowList;
+            using (SqlConnection sqlConn = new SqlConnection(StrConn)) {
+                try {
                     SqlCommand sqlCmd = new SqlCommand(strSQL, sqlConn);
                     sqlConn.Open();
                     SqlDataReader sqlData = sqlCmd.ExecuteReader();
@@ -346,28 +324,72 @@ namespace JAC_DataBase {
                         }
                         rowList.Add(items);
                     }
+                    string[,] records = new string[rowList.Count, count];
+                    for (int i = 0; i < rowList.Count; i++) {
+                        for (int j = 0; j < count; j++) {
+                            records[i, j] = rowList[i][j];
+                        }
+                    }
+                    return records;
+                } catch (Exception e) {
+                    Console.Error.WriteLine(e.Message);
+                    Log.TraceError(e.Message);
+                } finally {
                     sqlConn.Close();
                 }
-                string[,] records = new string[rowList.Count, count];
-                for (int i = 0; i < rowList.Count; i++) {
-                    for (int j = 0; j < count; j++) {
-                        records[i, j] = rowList[i][j];
-                    }
-                }
-                return records;
-            } catch (Exception e) {
-                Console.Error.WriteLine(e.Message);
-                Log.TraceError(e.Message);
             }
-            return new string[,] { { "" }, { "" } };
+            return new string[,] { };
         }
 
-        public string[,] SelectRecord(string strTableName, string strColumn, string strValue, out int iCount) {
-            string strSQL = "select * from " + strTableName + " where " + strColumn + " = '" + strValue + "'";
+        public string[,] SelectRecord(int index, string strColumnDesc, string strValue, out int iCount) {
+            if (index < 1) {
+                iCount = -1;
+                return new string[,] { };
+            }
+            string strTableName = DBCfg.TableList[index - 1][0];
+            string[] strColumns = GetTableColumns(index);
+            string[] strColDesc = GetTableColumnDesc(index);
+            string strColumn = "";
+            for (int i = 0; i < strColDesc.Length; i++) {
+                if (strColDesc[i] == strColumnDesc) {
+                    strColumn = strColumns[i];
+                }
+            }
+            string strSQL = "select * from " + strTableName + " where " + strColumn + " like '%" + strValue + "%'";
             Log.TraceInfo("SQL: " + strSQL);
             string[,] strArr = SelectDB(strSQL);
             iCount = strArr.GetLength(0);
             return strArr;
+        }
+
+        public string[] GetTableColumnDesc(int index) {
+            if (index < 1) {
+                return new string[] { };
+            }
+            string strTableName = DBCfg.TableList[index - 1][0];
+            using (SqlConnection sqlConn = new SqlConnection(StrConn)) {
+                try {
+                    string strSQL = "select value from sys.extended_properties where major_id=OBJECT_ID('" + strTableName + "')";
+                    SqlCommand sqlCmd = new SqlCommand(strSQL, sqlConn);
+                    sqlConn.Open();
+                    SqlDataReader sqlData = sqlCmd.ExecuteReader();
+                    List<string> valueList = new List<string>();
+                    while (sqlData.Read()) {
+                        valueList.Add(sqlData.GetString(0));
+                    }
+                    string[] strDesc = new string[valueList.Count];
+                    for (int i = 0; i < strDesc.Length; i++) {
+                        strDesc[i] = valueList[i];
+                    }
+                    return strDesc;
+                } catch (Exception e) {
+                    Console.Error.WriteLine(e.Message);
+                    Log.TraceError(e.Message);
+                } finally {
+                    sqlConn.Close();
+                }
+            }
+            return new string[] { };
         }
     }
 }

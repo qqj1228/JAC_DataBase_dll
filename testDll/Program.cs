@@ -12,9 +12,6 @@ namespace testDll {
             DB_Class db = new DB_Class("./DB_Config.xml");
 
             /*
-            log.TraceInfo("GetTableName()");
-            db.GetTableName();
-
             Console.WriteLine();
             log.TraceWarning("GetTableColumns(\"BrakeResult\")");
             db.GetTableColumns("BrakeResult");
@@ -24,6 +21,7 @@ namespace testDll {
             db.GetRecords("VehicleInfo", 1, 4);
             */
 
+            /*
             Console.WriteLine();
             log.TraceInfo("GetRecordsCount(\"VehicleInfo\")");
             int count = db.GetRecordsCount("VehicleInfo");
@@ -61,6 +59,19 @@ namespace testDll {
             log.TraceError("SelectRecord(\"CaliProcResult\", \"Result\", \"X\", out count)");
             db.SelectRecord("CaliProcResult", "Result", "X", out count);
             Console.WriteLine("SelectRecord(), There is {0} record(s)", count);
+            */
+
+            Console.WriteLine("\nGetTableName()");
+            string[] strTableName = db.GetTableName();
+            foreach (var item in strTableName) {
+                Console.WriteLine(item);
+            }
+
+            Console.WriteLine("\nGetTableColumnDesc");
+            string[] strDesc =  db.GetTableColumnDesc(3);
+            foreach (var item in strDesc) {
+                Console.WriteLine(item);
+            }
         }
     }
 }

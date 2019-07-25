@@ -4,4 +4,11 @@
     <DB_Name>JAC</DB_Name>
     <DB_UserID>sa</DB_UserID>
     <DB_Pwd>sh49</DB_Pwd>
+    <TableList>
+        <Table Name="NCAConfig" Description="四轮定位工位配置" />
+        <Table Name="HLAConfig" Description="大灯工位配置" />
+        <Table Name="SideSlipConfig" Description="侧滑工位配置" />
+        <Table Name="BrakeConfig" Description="制动工位配置" />
+        <Table Name="VehicleInfo" Description="车辆信息表" />
+    </TableList>
 </DB_Config>
